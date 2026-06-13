@@ -1,0 +1,374 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design tokens ────────────────────────────────────────────────────────── */
+
+:root {
+  --bg:           #0d0d0f;
+  --surface:      #141416;
+  --surface-2:    #1c1c1f;
+  --border:       #2a2a2e;
+  --border-hover: #3f3f45;
+  --text:         #e8e8ed;
+  --text-muted:   #6b6b75;
+  --text-dim:     #3d3d45;
+  --accent:       #7c6aff;
+  --accent-dim:   rgba(124, 106, 255, 0.08);
+  --amber:        #f5a623;
+  --red:          #ff5f57;
+}
+
+/* ─── Reset ────────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar            { width: 6px; height: 6px; }
+::-webkit-scrollbar-track      { background: transparent; }
+::-webkit-scrollbar-thumb      { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover{ background: var(--border-hover); }
+
+/* ─── Utility keyframes ─────────────────────────────────────────────────────── */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 0.3; }
+}
+
+/* ─── React Grid Layout ────────────────────────────────────────────────────── */
+
+.react-grid-layout { position: relative; }
+
+.react-grid-item {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: var(--accent-dim);
+  border: 1px dashed var(--accent);
+  border-radius: 12px;
+  opacity: 1;
+  transition: all 200ms ease;
+}
+
+.react-grid-item > .react-resizable-handle {
+  position: absolute;
+  width: 20px; height: 20px;
+  bottom: 4px; right: 4px;
+  cursor: se-resize;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.react-grid-item:hover > .react-resizable-handle { opacity: 1; }
+.react-grid-item > .react-resizable-handle::after {
+  content: '';
+  position: absolute;
+  right: 3px; bottom: 3px;
+  width: 8px; height: 8px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  border-radius: 0 0 3px 0;
+}
+
+.react-grid-item.react-draggable-dragging {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent);
+  z-index: 100;
+}
+
+/* ─── Widget card ──────────────────────────────────────────────────────────── */
+
+.widget-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: border-color 150ms ease;
+}
+.widget-card:hover              { border-color: var(--border-hover); }
+.edit-mode .widget-card         { border-color: var(--border-hover); cursor: grab; }
+.edit-mode .widget-card:active  { cursor: grabbing; }
+
+/* ─── WidgetWrapper remove button ──────────────────────────────────────────── */
+
+.widget-remove-btn {
+  position: absolute;
+  top: 6px; right: 6px;
+  background: var(--red);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  width: 22px; height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: transform 100ms ease;
+}
+.widget-remove-btn:hover { transform: scale(1.15); }
+
+/* ─── WidgetWrapper resize controls ────────────────────────────────────────── */
+
+.widget-resize-bar {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-hover);
+  border-radius: 9px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  z-index: 11;
+}
+
+.widget-resize-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.widget-resize-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  width: 10px;
+  text-align: center;
+}
+
+.widget-resize-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text);
+  min-width: 14px;
+  text-align: center;
+}
+
+.widget-resize-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+}
+
+.widget-resize-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.widget-resize-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* ─── Toolbar ──────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+}
+
+.toolbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+}
+
+.toolbar-wordmark {
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+}
+
+.toolbar-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 150ms ease;
+}
+.toolbar-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+.toolbar-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.toolbar-btn--active:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  opacity: 0.9;
+}
+.toolbar-btn--accent {
+  background: var(--accent-dim);
+  border: 1px solid rgba(124, 106, 255, 0.3);
+  color: var(--accent);
+}
+.toolbar-btn--accent:hover {
+  background: rgba(124, 106, 255, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.toolbar-icon-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+}
+.toolbar-icon-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+/* ─── Add-widget menu ──────────────────────────────────────────────────────── */
+
+.add-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  z-index: 50;
+  min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.add-menu-item {
+  background: none;
+  border: none;
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px 12px;
+  text-align: left;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: background 100ms ease;
+}
+.add-menu-item:hover { background: var(--surface-2); }
+
+.add-menu-item__name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+}
+.add-menu-item__desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ─── Anime widget interactive elements ────────────────────────────────────── */
+
+.anime-search-result {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: border-color 100ms ease, background 100ms ease;
+  width: 100%;
+}
+.anime-search-result:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.anime-change-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  margin-top: auto;
+  transition: border-color 150ms ease, color 150ms ease;
+  font-family: 'DM Sans', sans-serif;
+}
+.anime-change-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
