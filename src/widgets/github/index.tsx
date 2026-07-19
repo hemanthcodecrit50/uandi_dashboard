@@ -50,21 +50,12 @@ function timeAgo(dateStr: string): string {
 }
 
 async function fetchGitHubActivity(username: string): Promise<{ user: GhUser; events: GhEvent[] }> {
-  const [userRes, eventsRes] = await Promise.all([
-    fetch(`https://api.github.com/users/${username}`),
-    fetch(`https://api.github.com/users/${username}/events?per_page=15`),
-  ]);
-  if (!userRes.ok) throw new Error('User not found');
-  const user = await userRes.json();
-
-  const rawEvents = await eventsRes.json();
-  const eventArray = Array.isArray(rawEvents) ? rawEvents : [];
-  const filtered = eventArray.filter((e: GhEvent) =>
-    e?.type === 'PushEvent' || e?.type === 'CreateEvent' ||
-    e?.type === 'StarEvent' || e?.type === 'IssuesEvent' || e?.type === 'PullRequestEvent',
-  ).slice(0, 10);
-
-  return { user, events: filtered };
+  const res = await fetch(`/api/github?username=${encodeURIComponent(username)}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? `GitHub ${res.status}`);
+  }
+  return res.json();
 }
 
 function EventRow({ event }: { event: GhEvent }) {
@@ -89,7 +80,7 @@ function EventRow({ event }: { event: GhEvent }) {
 export default function GitHubWidget({ config }: WidgetProps) {
   const username = (config.username as string) ?? '';
 
-  const { data, isFetching, refetch } = useQuery({
+  const { data, isFetching, error, refetch } = useQuery({
     queryKey: ['gh-activity', username],
     queryFn: () => fetchGitHubActivity(username),
     enabled: username.length > 0,
@@ -129,6 +120,20 @@ export default function GitHubWidget({ config }: WidgetProps) {
         {isFetching && !data ? (
           <div style={{ padding: '16px', textAlign: 'center' }}>
             <RefreshCw size={16} color="var(--text-dim)" style={{ animation: 'spin 1s linear infinite' }} />
+          </div>
+        ) : error ? (
+          <div style={{ padding: '12px', textAlign: 'center' }}>
+            <AlertCircle size={16} color="var(--red)" style={{ marginBottom: '6px' }} />
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
+              {(error as Error).message ?? 'Failed to load'}
+            </p>
+            <button onClick={() => refetch()} style={{
+              marginTop: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)',
+              borderRadius: '6px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.72rem',
+              padding: '4px 10px',
+            }}>
+              Retry
+            </button>
           </div>
         ) : data?.events.length === 0 ? (
           <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center', padding: '12px 0' }}>
