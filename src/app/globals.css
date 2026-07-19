@@ -703,6 +703,27 @@ html, body {
   color: var(--text-muted);
 }
 
+/* ─── Pomodoro button ─────────────────────────────────────────────────────── */
+
+.pomodoro-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 120ms ease;
+}
+.pomodoro-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
 /* ─── Widget config panel ─────────────────────────────────────────────────── */
 
 .config-panel {

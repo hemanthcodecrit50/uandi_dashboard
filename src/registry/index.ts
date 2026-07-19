@@ -6,12 +6,16 @@ import { metadata as clockMeta } from '@/widgets/clock';
 import { metadata as textMeta } from '@/widgets/text';
 import { metadata as animeMeta } from '@/widgets/anime';
 import { metadata as gmailMeta } from '@/widgets/gmail';
+import { metadata as weatherMeta } from '@/widgets/weather';
+import { metadata as pomodoroMeta } from '@/widgets/pomodoro';
 
 // ─── Lazy component imports (loaded on demand) ────────────────────────────────
 const LazyClockWidget = React.lazy(() => import('@/widgets/clock'));
 const LazyTextWidget = React.lazy(() => import('@/widgets/text'));
 const LazyAnimeWidget = React.lazy(() => import('@/widgets/anime'));
 const LazyGmailWidget = React.lazy(() => import('@/widgets/gmail'));
+const LazyWeatherWidget = React.lazy(() => import('@/widgets/weather'));
+const LazyPomodoroWidget = React.lazy(() => import('@/widgets/pomodoro'));
 
 // ─── Widget registry ──────────────────────────────────────────────────────────
 // Metadata is always available for the Add Widget menu.
@@ -22,6 +26,8 @@ const WIDGETS: Record<string, WidgetDefinition> = {
   [textMeta.id]: { ...textMeta, component: LazyTextWidget },
   [animeMeta.id]: { ...animeMeta, component: LazyAnimeWidget },
   [gmailMeta.id]: { ...gmailMeta, component: LazyGmailWidget },
+  [weatherMeta.id]: { ...weatherMeta, component: LazyWeatherWidget },
+  [pomodoroMeta.id]: { ...pomodoroMeta, component: LazyPomodoroWidget },
 };
 
 // ─── Default dashboard + instances ────────────────────────────────────────────
