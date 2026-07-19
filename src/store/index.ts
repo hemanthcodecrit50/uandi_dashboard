@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { WidgetInstance, Dashboard, DashboardTheme, DashboardSettings } from '@/types';
+import { WidgetInstance, Dashboard, DashboardTheme, DashboardSettings, WidgetVisibility, WidgetMode } from '@/types';
 import { widgetRegistry } from '@/registry';
 import { DEFAULT_DASHBOARD } from '@/registry';
 import { loadSchema, saveSchema, parseSchema, serialiseSchema } from '@/services/persistence';
@@ -31,6 +31,8 @@ interface DashboardStore {
   resizeWidget(instanceId: string, w: number, h: number): void;
   resizeWidgetBy(instanceId: string, dw: number, dh: number): void;
   updateWidgetConfig(instanceId: string, patch: Record<string, unknown>): void;
+  updateWidgetVisibility(instanceId: string, visibility: WidgetVisibility): void;
+  updateWidgetMode(instanceId: string, mode: WidgetMode): void;
 
   // Persistence
   loadLayout(): void;
@@ -240,6 +242,18 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     const next = patchById(get().widgets, instanceId, (w) => ({
       ...w, configuration: { ...w.configuration, ...patch },
     }));
+    set({ widgets: next });
+    persist(get());
+  },
+
+  updateWidgetVisibility(instanceId, visibility) {
+    const next = patchById(get().widgets, instanceId, (w) => ({ ...w, visibility }));
+    set({ widgets: next });
+    persist(get());
+  },
+
+  updateWidgetMode(instanceId, mode) {
+    const next = patchById(get().widgets, instanceId, (w) => ({ ...w, mode }));
     set({ widgets: next });
     persist(get());
   },
