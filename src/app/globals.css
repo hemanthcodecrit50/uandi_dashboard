@@ -1136,6 +1136,41 @@ html, body {
   flex-shrink: 0;
 }
 
+/* ─── Gmail rendered body ─────────────────────────────────────────────────── */
+
+.gmail-body {
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.gmail-body p { margin: 0 0 8px; }
+.gmail-body a { color: var(--accent); text-decoration: none; }
+.gmail-body a:hover { text-decoration: underline; }
+.gmail-body blockquote {
+  border-left: 3px solid var(--border);
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: var(--text-dim);
+}
+.gmail-body img { max-width: 100%; border-radius: 6px; }
+.gmail-body pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+}
+.gmail-body table { border-collapse: collapse; width: 100%; }
+.gmail-body td, .gmail-body th {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  font-size: 0.78rem;
+}
+
 /* ─── Widget config panel ─────────────────────────────────────────────────── */
 
 .config-panel {
