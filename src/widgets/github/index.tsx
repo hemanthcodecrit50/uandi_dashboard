@@ -49,13 +49,19 @@ function timeAgo(dateStr: string): string {
   return `${days}d`;
 }
 
-async function fetchGitHubActivity(username: string): Promise<{ user: GhUser; events: GhEvent[] }> {
+interface GhActivityResponse {
+  user: GhUser;
+  events: GhEvent[];
+  rateLimited?: boolean;
+}
+
+async function fetchGitHubActivity(username: string): Promise<GhActivityResponse> {
   const res = await fetch(`/api/github?username=${encodeURIComponent(username)}`);
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
+  const data = await res.json();
+  if (!res.ok && !data.user) {
     throw new Error(data.error ?? `GitHub ${res.status}`);
   }
-  return res.json();
+  return data;
 }
 
 function EventRow({ event }: { event: GhEvent }) {
@@ -134,6 +140,13 @@ export default function GitHubWidget({ config }: WidgetProps) {
             }}>
               Retry
             </button>
+          </div>
+        ) : data?.rateLimited && data.events.length === 0 ? (
+          <div style={{ padding: '12px', textAlign: 'center' }}>
+            <AlertCircle size={14} color="var(--amber)" style={{ marginBottom: '4px' }} />
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
+              Rate limited — try again in a few minutes
+            </p>
           </div>
         ) : data?.events.length === 0 ? (
           <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center', padding: '12px 0' }}>
