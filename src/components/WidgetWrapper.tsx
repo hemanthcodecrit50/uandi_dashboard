@@ -17,7 +17,7 @@ interface WidgetWrapperProps {
 export default function WidgetWrapper({ id, isEditMode, children }: WidgetWrapperProps) {
   const removeWidget = useDashboardStore((s) => s.removeWidget);
   const resizeWidgetBy = useDashboardStore((s) => s.resizeWidgetBy);
-  const layout = useDashboardStore((s) => s.widgets.find((w) => w.id === id)?.layout);
+  const layout = useDashboardStore((s) => s.widgets.find((w) => w.instanceId === id)?.layout);
 
   return (
     <div style={{ height: '100%', position: 'relative' }}>

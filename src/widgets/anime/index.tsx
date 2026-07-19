@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { WidgetDefinition, WidgetProps } from '@/types';
+import { WidgetProps, WidgetCapability } from '@/types';
 import { useDashboardStore } from '@/store';
 import { searchAnime, getAnimeDetail, formatTimeUntilAiring } from '@/services/anilist';
 import { Search, Tv, Clock, Star, X } from 'lucide-react';
@@ -203,7 +203,7 @@ function DetailPanel({ animeId, onClear, onChangeAnime }: DetailPanelProps) {
 
 // ─── Coordinator ──────────────────────────────────────────────────────────────
 
-function AnimeWidget({ id, config }: WidgetProps) {
+export default function AnimeWidget({ id, config }: WidgetProps) {
   const updateWidgetConfig = useDashboardStore((s) => s.updateWidgetConfig);
   const [showSearch, setShowSearch] = useState(false);
 
@@ -238,11 +238,13 @@ function AnimeWidget({ id, config }: WidgetProps) {
   );
 }
 
-export const AnimeWidgetDef: WidgetDefinition = {
+export const metadata = {
   id: 'AnimeWidget',
   displayName: 'Anime Tracker',
   description: 'Track airing schedules from AniList',
-  component: AnimeWidget,
-  defaultSize: { w: 4, h: 5 },
-  minSize: { w: 3, h: 4 },
+  icon: 'Tv',
+  defaultSize: { w: 4, h: 5 } as { w: number; h: number },
+  minSize: { w: 3, h: 4 } as { w: number; h: number },
+  capabilities: ['shareable', 'searchable', 'realtime'] as WidgetCapability[],
+  tags: ['entertainment', 'media'],
 };

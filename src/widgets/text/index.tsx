@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { WidgetDefinition, WidgetProps } from '@/types';
+import { WidgetProps, WidgetCapability, ConfigurationSchema } from '@/types';
 import { useDashboardStore } from '@/store';
 import { Pencil, Check } from 'lucide-react';
 
-function TextWidget({ id, config }: WidgetProps) {
+export default function TextWidget({ id, config }: WidgetProps) {
   const updateWidgetConfig = useDashboardStore((s) => s.updateWidgetConfig);
 
   // Edit buffer — only populated while the user is actively editing.
@@ -126,11 +126,29 @@ function TextWidget({ id, config }: WidgetProps) {
   );
 }
 
-export const TextWidgetDef: WidgetDefinition = {
+export const metadata = {
   id: 'TextWidget',
   displayName: 'Note',
   description: 'Editable text note',
-  component: TextWidget,
-  defaultSize: { w: 4, h: 3 },
-  minSize: { w: 2, h: 2 },
+  icon: 'FileText',
+  defaultSize: { w: 4, h: 3 } as { w: number; h: number },
+  minSize: { w: 2, h: 2 } as { w: number; h: number },
+  capabilities: ['shareable', 'exportable', 'configurable'] as WidgetCapability[],
+  tags: ['productivity', 'text'],
+  configurationSchema: {
+    fields: [
+      {
+        key: 'title',
+        label: 'Title',
+        type: 'text' as const,
+        defaultValue: 'Note',
+      },
+      {
+        key: 'content',
+        label: 'Content',
+        type: 'text' as const,
+        defaultValue: '',
+      },
+    ],
+  } as ConfigurationSchema,
 };

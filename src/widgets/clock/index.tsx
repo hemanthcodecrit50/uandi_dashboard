@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { WidgetDefinition, WidgetProps } from '@/types';
+import { WidgetProps, WidgetCapability, ConfigurationSchema } from '@/types';
 
-function ClockWidget({ config }: WidgetProps) {
+export default function ClockWidget({ config }: WidgetProps) {
   const [time, setTime] = useState(() => new Date());
   const timezone = (config.timezone as string) || undefined; // undefined = system local
 
@@ -69,11 +69,24 @@ function ClockWidget({ config }: WidgetProps) {
   );
 }
 
-export const ClockWidgetDef: WidgetDefinition = {
+export const metadata = {
   id: 'ClockWidget',
   displayName: 'Clock',
   description: 'Live clock with date display',
-  component: ClockWidget,
-  defaultSize: { w: 4, h: 3 },
-  minSize: { w: 3, h: 2 },
+  icon: 'Clock',
+  defaultSize: { w: 4, h: 3 } as { w: number; h: number },
+  minSize: { w: 3, h: 2 } as { w: number; h: number },
+  capabilities: ['configurable'] as WidgetCapability[],
+  tags: ['utility', 'time'],
+  configurationSchema: {
+    fields: [
+      {
+        key: 'timezone',
+        label: 'Timezone',
+        type: 'text' as const,
+        defaultValue: '',
+        placeholder: 'e.g. America/New_York',
+      },
+    ],
+  } as ConfigurationSchema,
 };

@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Mail, MailOpen, RefreshCw, AlertTriangle, Clock, Info, LogOut, Chrome } from 'lucide-react';
-import { WidgetDefinition, WidgetProps } from '@/types';
+import { WidgetProps, WidgetCapability, ConfigurationSchema } from '@/types';
 import type { EmailMessage, EmailsResponse, Urgency } from '@/lib/gmailClient';
 import type { MeResponse } from '@/app/api/auth/me/route';
 
@@ -237,7 +237,7 @@ const FILTERS: { key: FilterKey; label: string; color?: string }[] = [
   { key: 'low',      label: 'Low',      color: '#6b6b75' },
 ];
 
-function GmailWidget({ config }: WidgetProps) {
+export default function GmailWidget({ config }: WidgetProps) {
   const title = (config.title as string) || 'Gmail';
   const qc = useQueryClient();
 
@@ -472,11 +472,23 @@ function GmailWidget({ config }: WidgetProps) {
 
 // ─── Definition ────────────────────────────────────────────────────────────────
 
-export const GmailWidgetDef: WidgetDefinition = {
+export const metadata = {
   id: 'GmailWidget',
   displayName: 'Gmail',
   description: 'Inbox emails colour-coded by urgency',
-  component: GmailWidget,
-  defaultSize: { w: 5, h: 6 },
-  minSize: { w: 4, h: 4 },
+  icon: 'Mail',
+  defaultSize: { w: 5, h: 6 } as { w: number; h: number },
+  minSize: { w: 4, h: 4 } as { w: number; h: number },
+  capabilities: ['shareable', 'realtime', 'configurable'] as WidgetCapability[],
+  tags: ['productivity', 'email'],
+  configurationSchema: {
+    fields: [
+      {
+        key: 'title',
+        label: 'Title',
+        type: 'text' as const,
+        defaultValue: 'Gmail',
+      },
+    ],
+  } as ConfigurationSchema,
 };

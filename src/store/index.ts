@@ -1,22 +1,35 @@
 import { create } from 'zustand';
-import { WidgetNode } from '@/types';
+import { WidgetInstance, Dashboard } from '@/types';
 import { widgetRegistry } from '@/registry';
+import { DEFAULT_DASHBOARD } from '@/registry';
 import { loadSchema, saveSchema, parseSchema, serialiseSchema } from '@/services/persistence';
 
 interface DashboardStore {
-  widgets: WidgetNode[];
+  dashboards: Dashboard[];
+  currentDashboardId: string;
+  widgets: WidgetInstance[];
   isEditMode: boolean;
 
+  currentDashboard(): Dashboard | undefined;
+  currentWidgets(): WidgetInstance[];
+
   setEditMode(value: boolean): void;
-  // Store resolves the widget definition itself — callers only pass an ID.
-  addWidget(componentId: string): void;
-  removeWidget(id: string): void;
-  // Single-item positional updates (drag / resize).
-  moveWidget(id: string, x: number, y: number): void;
-  resizeWidget(id: string, w: number, h: number): void;
-  // Relative resize from UI controls (buttons). Clamps to grid + widget bounds.
-  resizeWidgetBy(id: string, dw: number, dh: number): void;
-  updateWidgetConfig(id: string, patch: Record<string, unknown>): void;
+
+  // Dashboard CRUD
+  createDashboard(name: string): void;
+  deleteDashboard(id: string): void;
+  switchDashboard(id: string): void;
+  renameDashboard(id: string, name: string): void;
+
+  // Widget CRUD (scoped to current dashboard)
+  addWidget(widgetType: string): void;
+  removeWidget(instanceId: string): void;
+  moveWidget(instanceId: string, x: number, y: number): void;
+  resizeWidget(instanceId: string, w: number, h: number): void;
+  resizeWidgetBy(instanceId: string, dw: number, dh: number): void;
+  updateWidgetConfig(instanceId: string, patch: Record<string, unknown>): void;
+
+  // Persistence
   loadLayout(): void;
   exportLayout(): string;
   importLayout(json: string): void;
@@ -30,76 +43,141 @@ const clamp = (n: number, min: number, max: number) => Math.min(Math.max(n, min)
 
 let idCounter = Date.now();
 const generateId = () => `w_${(++idCounter).toString(36)}`;
+const generateDashboardId = () => `dash_${(++idCounter).toString(36)}`;
 
 function patchById(
-  widgets: WidgetNode[],
-  id: string,
-  updater: (w: WidgetNode) => WidgetNode,
-): WidgetNode[] {
-  return widgets.map((w) => (w.id === id ? updater(w) : w));
+  widgets: WidgetInstance[],
+  instanceId: string,
+  updater: (w: WidgetInstance) => WidgetInstance,
+): WidgetInstance[] {
+  return widgets.map((w) => (w.instanceId === instanceId ? updater(w) : w));
+}
+
+function persist(state: { dashboards: Dashboard[]; widgets: WidgetInstance[] }) {
+  saveSchema({ dashboards: state.dashboards, instances: state.widgets });
 }
 
 export const useDashboardStore = create<DashboardStore>((set, get) => ({
+  dashboards: [],
+  currentDashboardId: 'default',
   widgets: [],
   isEditMode: false,
+
+  currentDashboard() {
+    return get().dashboards.find((d) => d.id === get().currentDashboardId);
+  },
+
+  currentWidgets() {
+    const dashId = get().currentDashboardId;
+    return get().widgets.filter((w) => w.dashboardId === dashId);
+  },
 
   setEditMode(value) {
     set({ isEditMode: value });
   },
 
-  // Registry lookup is the store's responsibility, not the caller's.
-  // Toolbar calls addWidget('ClockWidget') — nothing else.
-  addWidget(componentId) {
-    const def = widgetRegistry.get(componentId);
+  // ── Dashboard CRUD ──────────────────────────────────────────────────────
+
+  createDashboard(name) {
+    const newDashboard: Dashboard = {
+      id: generateDashboardId(),
+      name,
+      settings: {
+        gridColumns: 12,
+        gridRowHeight: 60,
+        compactType: 'vertical',
+      },
+      isDefault: false,
+    };
+    const next = [...get().dashboards, newDashboard];
+    set({ dashboards: next, currentDashboardId: newDashboard.id, isEditMode: false });
+    persist(get());
+  },
+
+  deleteDashboard(id) {
+    const { dashboards, widgets, currentDashboardId } = get();
+    const target = dashboards.find((d) => d.id === id);
+    if (!target || target.isDefault) return;
+
+    const nextDashboards = dashboards.filter((d) => d.id !== id);
+    const nextWidgets = widgets.filter((w) => w.dashboardId !== id);
+    const nextCurrentId = currentDashboardId === id ? 'default' : currentDashboardId;
+
+    set({
+      dashboards: nextDashboards,
+      widgets: nextWidgets,
+      currentDashboardId: nextCurrentId,
+      isEditMode: false,
+    });
+    persist(get());
+  },
+
+  switchDashboard(id) {
+    if (get().currentDashboardId === id) return;
+    set({ currentDashboardId: id, isEditMode: false });
+  },
+
+  renameDashboard(id, name) {
+    const next = get().dashboards.map((d) =>
+      d.id === id ? { ...d, name } : d,
+    );
+    set({ dashboards: next });
+    persist(get());
+  },
+
+  // ── Widget CRUD ─────────────────────────────────────────────────────────
+
+  addWidget(widgetType) {
+    const def = widgetRegistry.get(widgetType);
     if (!def) {
-      console.warn(`[dashboard] addWidget: unknown component "${componentId}"`);
+      console.warn(`[dashboard] addWidget: unknown widget type "${widgetType}"`);
       return;
     }
-    const widget: WidgetNode = {
-      id: generateId(),
-      component: componentId,
+    const instance: WidgetInstance = {
+      instanceId: generateId(),
+      widgetType,
+      dashboardId: get().currentDashboardId,
       layout: {
         x: 0,
-        y: Infinity, // react-grid-layout places it at the bottom
+        y: Infinity,
         w: def.defaultSize.w,
         h: def.defaultSize.h,
         minW: def.minSize?.w,
         minH: def.minSize?.h,
       },
-      config: {},
+      configuration: {},
+      visibility: 'private',
+      mode: 'readonly',
     };
-    const next = [...get().widgets, widget];
+    const next = [...get().widgets, instance];
     set({ widgets: next });
-    saveSchema(next);
+    persist(get());
   },
 
-  removeWidget(id) {
-    const next = get().widgets.filter((w) => w.id !== id);
+  removeWidget(instanceId) {
+    const next = get().widgets.filter((w) => w.instanceId !== instanceId);
     set({ widgets: next });
-    saveSchema(next);
+    persist(get());
   },
 
-  // Dedicated single-item updaters — no index building, no iteration overhead
-  // beyond the single map pass that patchById does.
-  moveWidget(id, x, y) {
-    const next = patchById(get().widgets, id, (w) => ({
+  moveWidget(instanceId, x, y) {
+    const next = patchById(get().widgets, instanceId, (w) => ({
       ...w, layout: { ...w.layout, x, y },
     }));
     set({ widgets: next });
-    saveSchema(next);
+    persist(get());
   },
 
-  resizeWidget(id, w, h) {
-    const next = patchById(get().widgets, id, (widget) => ({
+  resizeWidget(instanceId, w, h) {
+    const next = patchById(get().widgets, instanceId, (widget) => ({
       ...widget, layout: { ...widget.layout, w, h },
     }));
     set({ widgets: next });
-    saveSchema(next);
+    persist(get());
   },
 
-  // Step the size by whole grid cells, clamped to [minW..GRID_COLS] / [minH..MAX_ROWS].
-  resizeWidgetBy(id, dw, dh) {
-    const next = patchById(get().widgets, id, (widget) => {
+  resizeWidgetBy(instanceId, dw, dh) {
+    const next = patchById(get().widgets, instanceId, (widget) => {
       const { layout } = widget;
       const minW = layout.minW ?? 2;
       const minH = layout.minH ?? 2;
@@ -108,31 +186,41 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       return { ...widget, layout: { ...layout, w, h } };
     });
     set({ widgets: next });
-    saveSchema(next);
+    persist(get());
   },
 
-  updateWidgetConfig(id, patch) {
-    const next = patchById(get().widgets, id, (w) => ({
-      ...w, config: { ...w.config, ...patch },
+  updateWidgetConfig(instanceId, patch) {
+    const next = patchById(get().widgets, instanceId, (w) => ({
+      ...w, configuration: { ...w.configuration, ...patch },
     }));
     set({ widgets: next });
-    saveSchema(next);
+    persist(get());
   },
+
+  // ── Persistence ─────────────────────────────────────────────────────────
 
   loadLayout() {
     const schema = loadSchema();
-    set({ widgets: schema.widgets });
+    set({
+      dashboards: schema.dashboards,
+      currentDashboardId: schema.dashboards[0]?.id ?? 'default',
+      widgets: schema.instances,
+    });
   },
 
   exportLayout() {
-    return serialiseSchema(get().widgets);
+    return serialiseSchema(get().dashboards, get().widgets);
   },
 
   importLayout(json) {
     try {
       const schema = parseSchema(json);
-      set({ widgets: schema.widgets });
-      saveSchema(schema.widgets);
+      set({
+        dashboards: schema.dashboards,
+        currentDashboardId: schema.dashboards[0]?.id ?? 'default',
+        widgets: schema.instances,
+      });
+      persist(get());
     } catch (e) {
       console.error('[dashboard] Import failed', e);
       alert('Invalid layout file — could not import.');

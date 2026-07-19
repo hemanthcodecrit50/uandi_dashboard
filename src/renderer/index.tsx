@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { Suspense, useCallback } from 'react';
 import GridLayout, { Layout } from 'react-grid-layout';
 import { useDashboardStore } from '@/store';
 import { widgetRegistry } from '@/registry';
@@ -12,14 +12,24 @@ interface RendererProps {
   width: number;
 }
 
+function WidgetSkeleton() {
+  return (
+    <div className="widget-card widget-skeleton">
+      <div className="skeleton-line skeleton-line--title" />
+      <div className="skeleton-line skeleton-line--body" />
+      <div className="skeleton-line skeleton-line--body skeleton-line--short" />
+    </div>
+  );
+}
+
 export default function Renderer({ width }: RendererProps) {
-  const widgets = useDashboardStore((s) => s.widgets);
+  const widgets = useDashboardStore((s) => s.currentWidgets());
   const isEditMode = useDashboardStore((s) => s.isEditMode);
   const moveWidget = useDashboardStore((s) => s.moveWidget);
   const resizeWidget = useDashboardStore((s) => s.resizeWidget);
 
   const layout: Layout[] = widgets.map((w) => ({
-    i: w.id,
+    i: w.instanceId,
     x: w.layout.x,
     y: w.layout.y,
     w: w.layout.w,
@@ -30,8 +40,6 @@ export default function Renderer({ width }: RendererProps) {
     isResizable: isEditMode,
   }));
 
-  // Persist only on interaction end — not on every pixel moved.
-  // handleDragStop and handleResizeStop had identical bodies; unified here.
   const handleDragStop = useCallback(
     (_: Layout[], __: Layout, l: Layout) => moveWidget(l.i, l.x, l.y),
     [moveWidget],
@@ -59,14 +67,14 @@ export default function Renderer({ width }: RendererProps) {
       draggableHandle=".drag-handle"
     >
       {widgets.map((widget) => {
-        const def = widgetRegistry.get(widget.component);
+        const def = widgetRegistry.get(widget.widgetType);
 
         if (!def) {
           return (
-            <div key={widget.id}>
+            <div key={widget.instanceId}>
               <div className="widget-card" style={{ padding: '20px' }}>
                 <p style={{ color: 'var(--red)', fontSize: '0.85rem' }}>
-                  Unknown widget: <code>{widget.component}</code>
+                  Unknown widget: <code>{widget.widgetType}</code>
                 </p>
               </div>
             </div>
@@ -76,11 +84,11 @@ export default function Renderer({ width }: RendererProps) {
         const Component = def.component;
 
         return (
-          <div key={widget.id}>
-            {/* WidgetWrapper subscribes to the store directly for remove —
-                no closure per widget, no prop drilling of removeWidget. */}
-            <WidgetWrapper id={widget.id} isEditMode={isEditMode}>
-              <Component id={widget.id} config={widget.config} />
+          <div key={widget.instanceId}>
+            <WidgetWrapper id={widget.instanceId} isEditMode={isEditMode}>
+              <Suspense fallback={<WidgetSkeleton />}>
+                <Component id={widget.instanceId} config={widget.configuration} />
+              </Suspense>
             </WidgetWrapper>
           </div>
         );
