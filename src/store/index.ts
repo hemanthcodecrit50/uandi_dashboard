@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { WidgetInstance, Dashboard } from '@/types';
+import { WidgetInstance, Dashboard, DashboardTheme, DashboardSettings } from '@/types';
 import { widgetRegistry } from '@/registry';
 import { DEFAULT_DASHBOARD } from '@/registry';
 import { loadSchema, saveSchema, parseSchema, serialiseSchema } from '@/services/persistence';
@@ -20,6 +20,9 @@ interface DashboardStore {
   deleteDashboard(id: string): void;
   switchDashboard(id: string): void;
   renameDashboard(id: string, name: string): void;
+  duplicateDashboard(id: string): void;
+  updateDashboardTheme(id: string, theme: DashboardTheme): void;
+  updateDashboardSettings(id: string, settings: Partial<DashboardSettings>): void;
 
   // Widget CRUD (scoped to current dashboard)
   addWidget(widgetType: string): void;
@@ -120,6 +123,50 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   renameDashboard(id, name) {
     const next = get().dashboards.map((d) =>
       d.id === id ? { ...d, name } : d,
+    );
+    set({ dashboards: next });
+    persist(get());
+  },
+
+  duplicateDashboard(id) {
+    const source = get().dashboards.find((d) => d.id === id);
+    if (!source) return;
+    const newId = generateDashboardId();
+    const dup: Dashboard = {
+      ...source,
+      id: newId,
+      name: `${source.name} (copy)`,
+      isDefault: false,
+      theme: source.theme ? { ...source.theme } : undefined,
+      settings: { ...source.settings },
+    };
+    const dupWidgets = get().widgets
+      .filter((w) => w.dashboardId === id)
+      .map((w) => ({
+        ...w,
+        instanceId: generateId(),
+        dashboardId: newId,
+        configuration: { ...w.configuration },
+      }));
+    set({
+      dashboards: [...get().dashboards, dup],
+      widgets: [...get().widgets, ...dupWidgets],
+      currentDashboardId: newId,
+    });
+    persist(get());
+  },
+
+  updateDashboardTheme(id, theme) {
+    const next = get().dashboards.map((d) =>
+      d.id === id ? { ...d, theme: { ...d.theme, ...theme } } : d,
+    );
+    set({ dashboards: next });
+    persist(get());
+  },
+
+  updateDashboardSettings(id, settings) {
+    const next = get().dashboards.map((d) =>
+      d.id === id ? { ...d, settings: { ...d.settings, ...settings } } : d,
     );
     set({ dashboards: next });
     persist(get());

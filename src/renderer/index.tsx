@@ -27,6 +27,10 @@ export default function Renderer({ width }: RendererProps) {
   const isEditMode = useDashboardStore((s) => s.isEditMode);
   const moveWidget = useDashboardStore((s) => s.moveWidget);
   const resizeWidget = useDashboardStore((s) => s.resizeWidget);
+  const dashSettings = useDashboardStore((s) => s.currentDashboard()?.settings);
+
+  const cols = dashSettings?.gridColumns ?? 12;
+  const rowHeight = dashSettings?.gridRowHeight ?? 60;
 
   const layout: Layout[] = widgets.map((w) => ({
     i: w.instanceId,
@@ -54,8 +58,8 @@ export default function Renderer({ width }: RendererProps) {
     <GridLayout
       className={isEditMode ? 'edit-mode' : ''}
       layout={layout}
-      cols={12}
-      rowHeight={60}
+      cols={cols}
+      rowHeight={rowHeight}
       width={width}
       onDragStop={handleDragStop}
       onResizeStop={handleResizeStop}

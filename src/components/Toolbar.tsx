@@ -3,9 +3,10 @@
 import { useRef, useState } from 'react';
 import { useDashboardStore } from '@/store';
 import { widgetRegistry } from '@/registry';
+import DashboardSettingsPanel from './DashboardSettingsPanel';
 import {
   LayoutDashboard, Plus, Download, Upload, Check, Pencil, ChevronDown,
-  Trash2, Pencil as PencilIcon,
+  Trash2, Pencil as PencilIcon, Settings,
 } from 'lucide-react';
 
 export default function Toolbar() {
@@ -25,6 +26,7 @@ export default function Toolbar() {
 
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showDashboardMenu, setShowDashboardMenu] = useState(false);
+  const [showDashSettings, setShowDashSettings] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -192,6 +194,27 @@ export default function Toolbar() {
       </div>
 
       <div className="toolbar-divider" />
+
+      {/* ── Dashboard Settings ── */}
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => { setShowDashSettings(!showDashSettings); setShowAddMenu(false); setShowDashboardMenu(false); }}
+          title="Dashboard settings"
+          className={`toolbar-icon-btn ${showDashSettings ? 'toolbar-btn--active' : ''}`}
+          style={showDashSettings ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' } : undefined}
+        >
+          <Settings size={15} />
+        </button>
+        {showDashSettings && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+              onClick={() => setShowDashSettings(false)}
+            />
+            <DashboardSettingsPanel onClose={() => setShowDashSettings(false)} />
+          </>
+        )}
+      </div>
 
       <button
         onClick={() => setEditMode(!isEditMode)}
