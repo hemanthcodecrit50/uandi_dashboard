@@ -233,3 +233,53 @@ export async function fetchEmails(
 
   return result;
 }
+
+// ─── Fetch single message body ───────────────────────────────────────────────
+
+export async function fetchMessageBody(
+  userId: string,
+  messageId: string,
+): Promise<{ body: string }> {
+  checkRateLimit(userId);
+
+  const tokens = await getValidTokens(userId);
+  const client = createOAuthClient();
+  client.setCredentials({ access_token: tokens.accessToken });
+
+  const gmail = google.gmail({ version: 'v1', auth: client });
+  const msg = await gmail.users.messages.get({
+    userId: 'me',
+    id: messageId,
+    format: 'full',
+  });
+
+  const payload = msg.data.payload;
+  if (!payload) return { body: '' };
+
+  function extractText(part: gmail_v1.Schema$MessagePart): string {
+    // multipart — recurse into parts
+    if (part.parts) {
+      // Prefer text/html, fall back to text/plain
+      const html = part.parts.find(p => p.mimeType === 'text/html');
+      const plain = part.parts.find(p => p.mimeType === 'text/plain');
+      if (html?.body?.data) return Buffer.from(html.body.data, 'base64url').toString('utf-8');
+      if (plain?.body?.data) return `<pre>${Buffer.from(plain.body.data, 'base64url').toString('utf-8')}</pre>`;
+      // Nested multipart
+      for (const sub of part.parts) {
+        if (sub.parts) {
+          const nested = extractText(sub);
+          if (nested) return nested;
+        }
+      }
+      return '';
+    }
+    // Single part
+    if (part.body?.data) {
+      const text = Buffer.from(part.body.data, 'base64url').toString('utf-8');
+      return part.mimeType === 'text/plain' ? `<pre>${text}</pre>` : text;
+    }
+    return '';
+  }
+
+  return { body: extractText(payload) };
+}
