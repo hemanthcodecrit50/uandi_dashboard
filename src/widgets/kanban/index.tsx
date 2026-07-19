@@ -85,11 +85,27 @@ function ColumnView({
   );
 }
 
+function parseColumns(raw: unknown): KanbanColumn[] {
+  if (!raw) return DEFAULT_COLUMNS;
+  let val = raw;
+  if (typeof val === 'string') {
+    try { val = JSON.parse(val); } catch { return DEFAULT_COLUMNS; }
+  }
+  if (!Array.isArray(val)) return DEFAULT_COLUMNS;
+  return val.filter(
+    (col): col is KanbanColumn =>
+      col != null &&
+      typeof col === 'object' &&
+      typeof (col as KanbanColumn).id === 'string' &&
+      typeof (col as KanbanColumn).title === 'string' &&
+      Array.isArray((col as KanbanColumn).cards),
+  );
+}
+
 export default function KanbanWidget({ id, config }: WidgetProps) {
   const updateWidgetConfig = useDashboardStore((s) => s.updateWidgetConfig);
 
-  const raw = config.columns as KanbanColumn[] | undefined;
-  const columns: KanbanColumn[] = raw ?? DEFAULT_COLUMNS;
+  const columns = parseColumns(config.columns);
 
   const updateColumn = (idx: number, col: KanbanColumn) => {
     const next = [...columns];

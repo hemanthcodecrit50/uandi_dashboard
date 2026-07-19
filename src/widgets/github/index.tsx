@@ -56,8 +56,15 @@ async function fetchGitHubActivity(username: string): Promise<{ user: GhUser; ev
   ]);
   if (!userRes.ok) throw new Error('User not found');
   const user = await userRes.json();
-  const events = await eventsRes.json();
-  return { user, events: events.filter((e: GhEvent) => e.type === 'PushEvent' || e.type === 'CreateEvent' || e.type === 'StarEvent' || e.type === 'IssuesEvent' || e.type === 'PullRequestEvent').slice(0, 10) };
+
+  const rawEvents = await eventsRes.json();
+  const eventArray = Array.isArray(rawEvents) ? rawEvents : [];
+  const filtered = eventArray.filter((e: GhEvent) =>
+    e?.type === 'PushEvent' || e?.type === 'CreateEvent' ||
+    e?.type === 'StarEvent' || e?.type === 'IssuesEvent' || e?.type === 'PullRequestEvent',
+  ).slice(0, 10);
+
+  return { user, events: filtered };
 }
 
 function EventRow({ event }: { event: GhEvent }) {
