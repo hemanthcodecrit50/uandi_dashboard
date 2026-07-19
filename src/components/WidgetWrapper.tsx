@@ -1,8 +1,10 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useDashboardStore } from '@/store';
-import { X, GripVertical, Minus, Plus } from 'lucide-react';
+import { widgetRegistry } from '@/registry';
+import WidgetConfigPanel from './WidgetConfigPanel';
+import { X, GripVertical, Minus, Plus, Settings } from 'lucide-react';
 
 interface WidgetWrapperProps {
   id: string;
@@ -10,14 +12,15 @@ interface WidgetWrapperProps {
   children: ReactNode;
 }
 
-// WidgetWrapper subscribes to the store for its own remove action.
-// Previously the Renderer built a closure per widget and passed it down
-// as onRemove(), creating a new function reference on every render cycle.
-// Now Renderer only passes `id` — stable across renders.
 export default function WidgetWrapper({ id, isEditMode, children }: WidgetWrapperProps) {
   const removeWidget = useDashboardStore((s) => s.removeWidget);
   const resizeWidgetBy = useDashboardStore((s) => s.resizeWidgetBy);
   const layout = useDashboardStore((s) => s.widgets.find((w) => w.instanceId === id)?.layout);
+  const widgetType = useDashboardStore((s) => s.widgets.find((w) => w.instanceId === id)?.widgetType);
+  const [showConfig, setShowConfig] = useState(false);
+
+  const def = widgetType ? widgetRegistry.get(widgetType) : undefined;
+  const hasConfig = (def?.configurationSchema?.fields?.length ?? 0) > 0;
 
   return (
     <div style={{ height: '100%', position: 'relative' }}>
@@ -57,9 +60,16 @@ export default function WidgetWrapper({ id, isEditMode, children }: WidgetWrappe
             <X size={12} />
           </button>
 
-          {/* Explicit resize controls — step width/height by one grid cell.
-              Sit above the drag-handle overlay (z-index 5) so clicks hit the
-              buttons, not a drag start. */}
+          {hasConfig && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowConfig(!showConfig); }}
+              title="Configure widget"
+              className={`widget-settings-btn ${showConfig ? 'widget-settings-btn--active' : ''}`}
+            >
+              <Settings size={12} />
+            </button>
+          )}
+
           <div className="widget-resize-bar" onMouseDown={(e) => e.stopPropagation()}>
             <div className="widget-resize-group">
               <span className="widget-resize-label">W</span>
@@ -102,6 +112,10 @@ export default function WidgetWrapper({ id, isEditMode, children }: WidgetWrappe
             </div>
           </div>
         </>
+      )}
+
+      {showConfig && (
+        <WidgetConfigPanel instanceId={id} onClose={() => setShowConfig(false)} />
       )}
     </div>
   );
