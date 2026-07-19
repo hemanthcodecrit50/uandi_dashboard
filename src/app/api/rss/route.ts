@@ -1,6 +1,22 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rateLimit';
+
+function getClientIp(request: Request): string {
+  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? request.headers.get('x-real-ip')
+    ?? '127.0.0.1';
+}
 
 export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  const rl = checkRateLimit(ip);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `Rate limited — retry in ${Math.ceil(rl.retryAfterMs / 1000)}s` },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const url = searchParams.get('url');
   if (!url) {

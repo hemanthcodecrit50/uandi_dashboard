@@ -16,14 +16,20 @@ interface SearchPanelProps {
 }
 
 function SearchPanel({ hasSelection, onSelect, onBack }: SearchPanelProps) {
-  const [query, setQuery] = useState('');
+  const [input, setInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data: results, isFetching } = useQuery({
-    queryKey: ['anime-search', query],
-    queryFn: () => searchAnime(query),
-    enabled: query.length > 1,
+    queryKey: ['anime-search', searchTerm],
+    queryFn: () => searchAnime(searchTerm),
+    enabled: searchTerm.length > 1,
     staleTime: 60_000,
   });
+
+  const doSearch = () => {
+    const t = input.trim();
+    if (t.length > 1) setSearchTerm(t);
+  };
 
   return (
     <div className="widget-card" style={{ padding: '20px' }}>
@@ -37,8 +43,9 @@ function SearchPanel({ hasSelection, onSelect, onBack }: SearchPanelProps) {
       <div style={{ position: 'relative', marginBottom: '12px' }}>
         <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
         <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
           placeholder="Search anime…"
           autoFocus
           className="anime-search-input"
@@ -76,7 +83,7 @@ function SearchPanel({ hasSelection, onSelect, onBack }: SearchPanelProps) {
         </div>
       )}
 
-      {!query && (
+      {!input && (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
           Search for an anime to track its airing schedule.
         </p>
