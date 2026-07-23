@@ -809,6 +809,19 @@ html, body {
   padding-left: 20px;
 }
 .md-ul li { margin: 2px 0; }
+.md-ol {
+  margin: 6px 0;
+  padding-left: 20px;
+  list-style-type: decimal;
+}
+.md-ol li { margin: 2px 0; }
+.md-li { list-style: disc; }
+.md-li-ordered { list-style: decimal; }
+.md-img {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 6px 0;
+}
 .md-hr {
   border: none;
   border-top: 1px solid var(--border);
@@ -1036,8 +1049,7 @@ html, body {
 
 .rss-item {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  gap: 8px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 7px;
@@ -1048,6 +1060,23 @@ html, body {
 .rss-item:hover {
   border-color: var(--accent);
   background: var(--accent-dim);
+}
+
+.rss-item-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.rss-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
 }
 
 .rss-item-top {
@@ -1463,4 +1492,70 @@ html, body {
 @keyframes skeleton-shimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* ─── Widget error boundary ────────────────────────────────────────────────── */
+
+.widget-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  min-height: 120px;
+  padding: 20px;
+  text-align: center;
+}
+
+.widget-error-icon {
+  color: var(--red);
+  opacity: 0.7;
+}
+
+.widget-error-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.widget-error-type {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.widget-error-msg {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.widget-error-retry {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 5px 12px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.widget-error-retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
 }

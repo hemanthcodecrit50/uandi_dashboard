@@ -7,7 +7,7 @@ import { GitBranch, GitCommit, Star, AlertCircle, RefreshCw, ExternalLink, Radio
 interface GhEvent {
   id: string;
   type: string;
-  repo: { name: string };
+  repo?: { name: string };
   created_at: string;
   payload: Record<string, unknown>;
 }
@@ -67,7 +67,7 @@ async function fetchGitHubActivity(username: string): Promise<GhActivityResponse
 function EventRow({ event }: { event: GhEvent }) {
   const Icon = EVENT_ICONS[event.type] || GitBranch;
   const label = EVENT_LABELS[event.type] || event.type;
-  const repoName = event.repo.name.split('/').slice(1).join('/');
+  const repoName = event.repo?.name?.split('/').slice(1).join('/') ?? 'unknown';
   const count = event.type === 'PushEvent' ? (event.payload.commits as unknown[])?.length ?? 0 : 0;
 
   return (

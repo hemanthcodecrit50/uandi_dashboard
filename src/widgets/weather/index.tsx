@@ -54,26 +54,47 @@ function getCurrentPosition(): Promise<GeolocationPosition> {
       reject(new Error('Geolocation not supported'));
       return;
     }
-    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
+    navigator.geolocation.getCurrentPosition(resolve, reject);
   });
 }
 
 function WeatherContent({ config }: { config: Record<string, unknown> }) {
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [geoError, setGeoError] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [detecting, setDetecting] = useState(false);
 
   const configLat = config.latitude as number | undefined;
   const configLon = config.longitude as number | undefined;
+  const hasCoords = configLat != null && configLon != null;
 
   useEffect(() => {
-    if (configLat != null && configLon != null) {
-      setCoords({ lat: configLat, lon: configLon });
+    if (hasCoords) {
+      setCoords({ lat: configLat!, lon: configLon! });
       return;
     }
-    getCurrentPosition()
-      .then((pos) => setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude }))
-      .catch(() => setGeoError(true));
+    if (!coords) {
+      detectLocation();
+    }
   }, [configLat, configLon]);
+
+  const detectLocation = () => {
+    setDetecting(true);
+    setGeoError(null);
+    getCurrentPosition()
+      .then((pos) => {
+        setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        setGeoError(null);
+      })
+      .catch((err: GeolocationPositionError) => {
+        let msg = 'Location unavailable';
+        if (err.code === 1) msg = 'Location permission denied. Please allow location access and try again.';
+        else if (err.code === 2) msg = 'Location unavailable. Check your device settings.';
+        else if (err.code === 3) msg = 'Location request timed out. Try again.';
+        else if (!navigator.geolocation) msg = 'Geolocation not supported by this browser.';
+        setGeoError(msg);
+      })
+      .finally(() => setDetecting(false));
+  };
 
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['weather', coords],
@@ -85,10 +106,36 @@ function WeatherContent({ config }: { config: Record<string, unknown> }) {
 
   if (geoError && !coords) {
     return (
-      <div className="widget-card" style={{ padding: '20px', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="widget-card" style={{ padding: '20px', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
         <MapPin size={20} color="var(--text-dim)" />
-        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '8px', textAlign: 'center' }}>
-          Location unavailable. Set latitude/longitude in settings.
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '8px', maxWidth: '200px', lineHeight: 1.4 }}>
+          {geoError}
+        </p>
+        <button
+          onClick={detectLocation}
+          disabled={detecting}
+          style={{
+            marginTop: '10px',
+            padding: '6px 14px',
+            fontSize: '0.72rem',
+            fontWeight: 500,
+            fontFamily: "'DM Sans', sans-serif",
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            color: 'var(--text-muted)',
+            cursor: detecting ? 'wait' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            transition: 'all 0.2s',
+          }}
+        >
+          <RefreshCw size={12} style={detecting ? { animation: 'spin 1s linear infinite' } : undefined} />
+          {detecting ? 'Detecting...' : 'Try again'}
+        </button>
+        <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '8px' }}>
+          Or set latitude &amp; longitude in widget settings
         </p>
       </div>
     );

@@ -6,133 +6,192 @@ A runtime-configurable personal dashboard inspired by Glance, Homepage, and Noti
 
 ```bash
 npm install
+cp .env.example .env.local   # fill in Google OAuth creds (optional)
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
 
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GOOGLE_CLIENT_ID` | For Gmail widget | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | For Gmail widget | Google OAuth client secret |
+| `GOOGLE_REDIRECT_URI` | For Gmail widget | e.g. `http://localhost:3000/api/auth/callback` |
+| `SESSION_SECRET` | For Gmail widget | Random string, min 32 chars |
+| `TOKEN_ENCRYPTION_KEY` | For Gmail widget | 64-char hex string (32 bytes) |
+| `DB_PATH` | No | SQLite path (default: `./data/dashboard.db`) |
+
+Widgets like Clock, Weather, Pomodoro, Markdown, Kanban, RSS, and GitHub work without any env vars.
+
 ## Features
 
-- **Edit Mode** — toggle to drag, resize, and delete widgets
-- **Add Widget** — dropdown menu to add Clock, Note, or Anime Tracker
+- **10 Widgets** — Clock, Note, Anime Tracker, Gmail, Weather, Pomodoro, Markdown, Kanban, RSS, GitHub
+- **Edit Mode** — drag, resize, delete widgets
+- **Widget Configuration** — per-widget settings via auto-generated forms
+- **Widget Permissions** — visibility (private/friends/public) and access mode
+- **Dashboard Settings** — theme picker, accent colors, grid columns/height, duplicate dashboard
+- **Multi-Dashboard** — create, rename, switch, delete dashboards
 - **Persistent Layout** — all changes save to localStorage automatically
-- **Export/Import** — share or backup your layout as JSON
-- **AniList Integration** — search and track anime airing schedules
-
-## MVP Flow
-
-1. Open the dashboard → default layout loads (Clock + Note + Anime Tracker)
-2. Click **Edit** → grid enters edit mode with drag handles
-3. Click **Add Widget** → choose from registry
-4. Drag and resize widgets freely
-5. Click **Done** → edit mode exits
-6. Refresh page → layout fully restored from localStorage
+- **Export/Import** — backup your layout as JSON
 
 ## Architecture
 
 ```
-Schema (JSON)
+Schema v2 (JSON)
   → Store (Zustand)
     → Renderer (React Grid Layout)
-      → Widget Registry (Map)
-        → React Components
+      → Widget Registry (lazy-loaded components)
+        → Widget Components
 ```
 
-### Key Separation of Concerns
+### Widget System
 
-| Layer | File | Responsibility |
-|-------|------|----------------|
-| Types | `src/types/index.ts` | Shared interfaces only |
-| Schema | `DashboardSchema` | Pure data — no logic |
-| Store | `src/store/index.ts` | All state mutations via actions |
-| Registry | `src/registry/index.ts` | Widget discovery — no layout knowledge |
-| Renderer | `src/renderer/index.tsx` | Mounts components from schema — no business logic |
-| Widgets | `src/widgets/*/index.tsx` | Self-contained — no layout knowledge |
-| Services | `src/services/anilist.ts` | API — no UI |
-
-### Widget Registry Pattern
-
-Each widget is a self-registering module:
+Each widget exports metadata + component separately:
 
 ```ts
-export const ClockWidgetDef: WidgetDefinition = {
-  id: 'ClockWidget',
-  displayName: 'Clock',
-  component: ClockWidget,
+// src/widgets/mywidget/index.tsx
+export default function MyWidget({ id, config }: WidgetProps) { ... }
+
+export const metadata: WidgetDefinition = {
+  id: 'MyWidget',
+  displayName: 'My Widget',
+  description: 'What it does',
+  icon: 'IconName',
   defaultSize: { w: 4, h: 3 },
-  minSize: { w: 3, h: 2 },
+  minSize: { w: 2, h: 2 },
+  capabilities: ['configurable'],
+  configurationSchema: {
+    fields: [
+      { key: 'color', label: 'Color', type: 'color', defaultValue: '#7c6aff' },
+    ],
+  },
 };
 ```
 
-The renderer resolves components at runtime:
+Register in `src/registry/index.ts`:
 
 ```ts
-const def = widgetRegistry.get(widget.component);
-const Component = def.component;
-return <Component id={widget.id} config={widget.config} />;
+import { metadata as myMeta } from '@/widgets/mywidget';
+const LazyMyWidget = React.lazy(() => import('@/widgets/mywidget'));
+
+const WIDGETS = {
+  [myMeta.id]: { ...myMeta, component: LazyMyWidget },
+};
 ```
 
-No switch statements. No hardcoded layouts.
+The Add Widget menu auto-discovers it. No switch statements.
 
 ### Adding a New Widget
 
 1. Create `src/widgets/mywidget/index.tsx`
-2. Export a `WidgetDefinition` constant
-3. Import and `register()` it in `src/registry/index.ts`
+2. Export a default component + `metadata` constant
+3. Import and register in `src/registry/index.ts`
 
-That's it — the toolbar's "Add Widget" menu auto-discovers it.
+## API Routes
 
-### Layout Schema
+| Method | Path | Auth | Rate Limit | Description |
+|--------|------|------|------------|-------------|
+| `GET` | `/api/health` | No | — | Health check (DB ping) |
+| `GET` | `/api/auth/google` | No | — | Redirect to Google OAuth |
+| `GET` | `/api/auth/callback` | No | — | OAuth callback (token exchange) |
+| `GET` | `/api/auth/me` | Session | — | Get current user profile |
+| `POST` | `/api/auth/logout` | Session | — | Delete tokens, clear session |
+| `GET` | `/api/gmail/messages` | Session | 10/user/min | Fetch inbox (urgency-classified) |
+| `GET` | `/api/gmail/messages/:id` | Session | 10/user/min | Fetch full email body |
+| `GET` | `/api/rss?url=...` | No | 20/IP/min | Fetch and parse RSS feed |
+| `GET` | `/api/github?username=...` | No | 20/IP/min | GitHub user + events |
 
-```json
-{
-  "version": "1.0.0",
-  "widgets": [
-    {
-      "id": "clock-1",
-      "component": "ClockWidget",
-      "layout": { "x": 0, "y": 0, "w": 4, "h": 3 },
-      "config": {}
-    }
-  ]
-}
-```
+### Gmail Urgency Classification
+
+Server-side regex-based, never exposed to client:
+
+- **Critical** — "urgent", "asap", "critical", "emergency", "action required"
+- **High** — "deadline", "important", "approval", "follow-up" + unread
+- **Medium** — unread, no keyword match
+- **Low** — read or no keyword match
+
+## Widgets
+
+| Widget | Config Fields | Data Source |
+|--------|--------------|-------------|
+| Clock | timezone | None |
+| Note | title, content | localStorage |
+| Anime Tracker | — | AniList GraphQL (no key) |
+| Gmail | title | Google OAuth → Gmail API |
+| Weather | latitude, longitude | Open-Meteo (no key) |
+| Pomodoro | workMinutes, breakMinutes | None (timer) |
+| Markdown | content | localStorage |
+| Kanban | columns | localStorage |
+| RSS Feed | feeds[] | RSS proxy → `/api/rss` |
+| GitHub Activity | username | GitHub API → `/api/github` |
 
 ## Tech Stack
 
 - **Next.js 14** (App Router) — framework
 - **React 18** — UI
-- **TypeScript** — types
-- **TailwindCSS** — styling
+- **TypeScript 5** — types
+- **TailwindCSS** — base styling
 - **Zustand** — state management
-- **React Grid Layout** — drag/resize grid
 - **TanStack Query** — data fetching with caching
-- **AniList GraphQL API** — anime data (no API key needed)
+- **React Grid Layout** — drag/resize grid
+- **better-sqlite3** — token storage
+- **jose** — JWT sessions
+- **googleapis** — Gmail OAuth
+- **AniList GraphQL** — anime data
+- **lucide-react** — icons
 
 ## Folder Structure
 
 ```
 src/
-  app/              # Next.js App Router
-  components/       # Shared UI (Toolbar, WidgetWrapper)
-  renderer/         # Schema → component renderer
-  widgets/          # Widget implementations
-    clock/
-    text/
-    anime/
-  registry/         # Widget registry singleton
-  store/            # Zustand store + actions
-  services/         # External API clients
-  hooks/            # Custom React hooks
-  types/            # Shared TypeScript interfaces
+  app/
+    api/              # API routes (auth, gmail, rss, github, health)
+    globals.css       # Design tokens + component styles
+    page.tsx          # Main page
+  components/         # Shared UI
+    Toolbar.tsx         # Top bar (dashboard switcher, edit, add, settings)
+    WidgetWrapper.tsx   # Widget chrome (remove, resize, config, permissions)
+    WidgetConfigPanel.tsx
+    WidgetPermissionsPanel.tsx
+    DashboardSettingsPanel.tsx
+    DashboardCanvas.tsx
+    ThemeApplier.tsx
+  renderer/           # Grid layout → widget mounting
+  widgets/
+    clock/            # Live clock
+    text/             # Editable note
+    anime/            # AniList tracker
+    gmail/            # Gmail inbox (7 sub-components)
+    weather/          # Open-Meteo weather
+    pomodoro/         # Focus timer
+    markdown/         # Markdown editor
+    kanban/           # 3-column board
+    rss/              # RSS feed reader
+    github/           # GitHub activity feed
+  lib/                # Shared utilities
+    crypto.ts           # AES-256-GCM encryption
+    session.ts          # JWT management
+    tokenStore.ts       # Encrypted SQLite token persistence
+    gmailClient.ts      # Gmail API + urgency classification
+    googleAuth.ts       # Google OAuth2 client
+    rateLimit.ts        # IP-based rate limiter
+    db.ts               # SQLite connection
+    env.ts              # Environment validation
+    storage/            # Storage provider abstraction
+  registry/           # Widget registry singleton
+  store/              # Zustand store + actions
+  services/           # External API clients (AniList)
+  types/              # Shared TypeScript interfaces
 ```
 
-## Extension Points
+## Testing
 
-The architecture is ready for:
+```bash
+# Backend API tests
+python3 test.py
 
-- **Plugin SDK**: `WidgetDefinition` interface is the contract
-- **Cloud sync**: replace `saveLayout`/`loadLayout` in store with API calls
-- **Widget marketplace**: registry already supports dynamic registration
-- **Nested layouts**: `WidgetNode.config` can hold child schemas
-- **User accounts**: auth wraps the store hydration step only
+# Or with a custom URL
+python3 test.py http://your-host:3000
+```

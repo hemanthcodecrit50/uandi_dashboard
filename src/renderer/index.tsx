@@ -5,6 +5,7 @@ import GridLayout, { Layout } from 'react-grid-layout';
 import { useDashboardStore } from '@/store';
 import { widgetRegistry } from '@/registry';
 import WidgetWrapper from '@/components/WidgetWrapper';
+import WidgetErrorBoundary from '@/components/WidgetErrorBoundary';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -90,9 +91,11 @@ export default function Renderer({ width }: RendererProps) {
         return (
           <div key={widget.instanceId}>
             <WidgetWrapper id={widget.instanceId} isEditMode={isEditMode}>
-              <Suspense fallback={<WidgetSkeleton />}>
-                <Component id={widget.instanceId} config={widget.configuration} />
-              </Suspense>
+              <WidgetErrorBoundary widgetId={widget.instanceId} widgetType={widget.widgetType}>
+                <Suspense fallback={<WidgetSkeleton />}>
+                  <Component id={widget.instanceId} config={widget.configuration} />
+                </Suspense>
+              </WidgetErrorBoundary>
             </WidgetWrapper>
           </div>
         );

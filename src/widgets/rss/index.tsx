@@ -11,6 +11,7 @@ interface FeedItem {
   link: string;
   pubDate: string;
   description: string;
+  image?: string;
 }
 
 interface FeedData {
@@ -26,7 +27,7 @@ async function fetchFeed(url: string): Promise<FeedData> {
 
 function FeedItemView({ item }: { item: FeedItem }) {
   const date = item.pubDate ? new Date(item.pubDate) : null;
-  const dateStr = date
+  const dateStr = date && !isNaN(date.getTime())
     ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date)
     : '';
 
@@ -37,14 +38,19 @@ function FeedItemView({ item }: { item: FeedItem }) {
       rel="noopener noreferrer"
       className="rss-item"
     >
-      <div className="rss-item-top">
-        <span className="rss-item-title">{item.title}</span>
-        <ExternalLink size={10} color="var(--text-dim)" />
-      </div>
-      {item.description && (
-        <p className="rss-item-desc">{item.description}</p>
+      {item.image && (
+        <img src={item.image} alt="" className="rss-item-img" loading="lazy" />
       )}
-      {dateStr && <span className="rss-item-date">{dateStr}</span>}
+      <div className="rss-item-content">
+        <div className="rss-item-top">
+          <span className="rss-item-title">{item.title}</span>
+          <ExternalLink size={10} color="var(--text-dim)" />
+        </div>
+        {item.description && (
+          <p className="rss-item-desc">{item.description}</p>
+        )}
+        {dateStr && <span className="rss-item-date">{dateStr}</span>}
+      </div>
     </a>
   );
 }

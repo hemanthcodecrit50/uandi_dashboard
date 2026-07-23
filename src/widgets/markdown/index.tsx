@@ -29,20 +29,48 @@ function renderMarkdown(text: string): string {
   html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
   // blockquote
   html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="md-quote">$1</blockquote>');
-  // unordered list
-  html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
-  html = /(<li>)/.test(html) ? html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul class="md-ul">$1</ul>') : html;
-  // ordered list
-  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // unordered list items
+  html = html.replace(/^[\*\-] (.+)$/gm, '<li class="md-li">$1</li>');
+  // ordered list items
+  html = html.replace(/^\d+\. (.+)$/gm, '<li class="md-li md-li-ordered">$1</li>');
+
+  // wrap consecutive unordered <li> in <ul>
+  html = html.replace(/((?:<li class="md-li">[\s\S]*?<\/li>\n?)+)/g, '<ul class="md-ul">$1</ul>');
+  // wrap consecutive ordered <li> in <ol>
+  html = html.replace(/((?:<li class="md-li md-li-ordered">[\s\S]*?<\/li>\n?)+)/g, '<ol class="md-ol">$1</ol>');
+
   // horizontal rule
   html = html.replace(/^---+$/gm, '<hr class="md-hr" />');
   // links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a class="md-link" href="$2" target="_blank" rel="noopener">$1</a>');
-  // line breaks → paragraphs
-  html = html.replace(/\n\n+/g, '</p><p class="md-p">');
-  html = `<p class="md-p">${html}</p>`;
-  // clean empty p
-  html = html.replace(/<p class="md-p"><\/p>/g, '');
+  // images
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img class="md-img" src="$2" alt="$1" />');
+  // line breaks → paragraphs (skip block elements)
+  const lines = html.split('\n');
+  const blocks: string[] = [];
+  let buf = '';
+  const isBlock = (l: string) => /^\s*<(h[1-6]|ul|ol|li|pre|blockquote|hr|div|table|p )/.test(l);
+
+  for (const line of lines) {
+    if (line.trim() === '') {
+      if (buf.trim()) blocks.push(buf.trim());
+      buf = '';
+    } else if (isBlock(line)) {
+      if (buf.trim()) blocks.push(buf.trim());
+      blocks.push(line);
+      buf = '';
+    } else {
+      buf += (buf ? '\n' : '') + line;
+    }
+  }
+  if (buf.trim()) blocks.push(buf.trim());
+
+  html = blocks
+    .map((b) => {
+      if (/^\s*<(h[1-6]|ul|ol|pre|blockquote|hr|div|table)/.test(b)) return b;
+      return `<p class="md-p">${b}</p>`;
+    })
+    .join('\n');
 
   return html;
 }

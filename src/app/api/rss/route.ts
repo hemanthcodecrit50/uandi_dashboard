@@ -32,27 +32,45 @@ export async function GET(request: Request) {
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'DashboardRSS/1.0' },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) {
       return NextResponse.json({ error: `Upstream ${res.status}` }, { status: 502 });
     }
     const xml = await res.text();
 
-    const items: { title: string; link: string; pubDate: string; description: string }[] = [];
+    const items: { title: string; link: string; pubDate: string; description: string; image?: string }[] = [];
     const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
     let match;
     while ((match = itemRegex.exec(xml)) !== null && items.length < 20) {
       const block = match[1];
       const get = (tag: string) => {
-        const m = block.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>|<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
+        const m = block.match(
+          new RegExp(
+            `<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>` +
+            `|<${tag}[^>]*>([\\s\\S]*?)</${tag}>`,
+          ),
+        );
         return m ? (m[1] ?? m[2] ?? '').trim() : '';
       };
+
+      let description = get('description');
+      if (!description) description = get('content:encoded');
+      if (!description) description = get('media:description');
+
+      let pubDate = get('pubDate');
+      if (!pubDate) pubDate = get('dc:date');
+
+      let image = '';
+      const imgMatch = block.match(/<media:content[^>]*medium="image"[^>]*url="([^"]+)"/);
+      if (imgMatch) image = imgMatch[1];
+
       items.push({
         title: get('title'),
-        link: get('link'),
-        pubDate: get('pubDate'),
-        description: get('description').replace(/<[^>]+>/g, '').slice(0, 200),
+        link: get('link') || get('guid'),
+        pubDate,
+        description: description.replace(/<[^>]+>/g, '').slice(0, 200),
+        image: image || undefined,
       });
     }
 

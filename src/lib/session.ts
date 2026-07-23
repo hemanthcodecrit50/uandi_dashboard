@@ -10,7 +10,9 @@ function getSecret(): Uint8Array {
   if (!s || s.length < 32) {
     throw new Error('SESSION_SECRET must be at least 32 characters. Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
   }
-  return new TextEncoder().encode(s);
+  const buf = Buffer.alloc(s.length);
+  buf.write(s);
+  return new Uint8Array(buf);
 }
 
 export interface SessionPayload {
