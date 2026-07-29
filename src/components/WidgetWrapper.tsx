@@ -23,6 +23,7 @@ const VISIBILITY_ICONS: Record<WidgetVisibility, typeof Lock> = {
 export default function WidgetWrapper({ id, isEditMode, children }: WidgetWrapperProps) {
   const removeWidget = useDashboardStore((s) => s.removeWidget);
   const resizeWidgetBy = useDashboardStore((s) => s.resizeWidgetBy);
+  const setEditMode = useDashboardStore((s) => s.setEditMode);
   const widget = useDashboardStore((s) => s.widgets.find((w) => w.instanceId === id));
   const [showConfig, setShowConfig] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
@@ -36,8 +37,17 @@ export default function WidgetWrapper({ id, isEditMode, children }: WidgetWrappe
 
   const VisIcon = VISIBILITY_ICONS[visibility];
 
+  // Right-click jumps straight into edit mode. Once already editing, the
+  // browser's native context menu is left alone (e.g. so links/text inside
+  // a widget can still be copied or opened via right-click).
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (isEditMode) return;
+    e.preventDefault();
+    setEditMode(true);
+  };
+
   return (
-    <div style={{ height: '100%', position: 'relative' }}>
+    <div style={{ height: '100%', position: 'relative' }} onContextMenu={handleContextMenu}>
       {children}
 
       {/* Visibility badge — always visible (not just edit mode) */}

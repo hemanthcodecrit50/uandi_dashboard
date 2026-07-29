@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { tokenStore } from '@/lib/tokenStore';
+import { getUserById } from '@/lib/userStore';
 
 export const runtime = 'nodejs';
 
@@ -14,15 +14,8 @@ export async function GET(): Promise<NextResponse<MeResponse>> {
   const session = await getSession();
   if (!session) return NextResponse.json({ user: null });
 
-  const tokens = await tokenStore.get(session.userId);
-  if (!tokens) return NextResponse.json({ user: null });
+  const user = getUserById(session.userId);
+  if (!user) return NextResponse.json({ user: null });
 
-  return NextResponse.json({
-    user: {
-      id:      session.userId,
-      email:   tokens.email,
-      name:    tokens.name,
-      picture: tokens.picture,
-    },
-  });
+  return NextResponse.json({ user });
 }

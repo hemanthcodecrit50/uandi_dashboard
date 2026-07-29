@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDashboardStore } from '@/store';
 import { widgetRegistry } from '@/registry';
 import type { ConfigurationField } from '@/types';
@@ -11,26 +11,58 @@ interface WidgetConfigPanelProps {
   onClose: () => void;
 }
 
+// Text/number fields commit on blur or Enter rather than on every keystroke —
+// fields like GitHub's username or Weather's lat/long drive a live network
+// fetch keyed on their value, so committing per-character was firing a
+// request per letter typed.
+function BufferedInput({
+  type,
+  initialValue,
+  placeholder,
+  onCommit,
+}: {
+  type: 'text' | 'number';
+  initialValue: string;
+  placeholder?: string;
+  onCommit: (raw: string) => void;
+}) {
+  const [buffer, setBuffer] = useState(initialValue);
+
+  useEffect(() => setBuffer(initialValue), [initialValue]);
+
+  const commit = () => onCommit(buffer);
+
+  return (
+    <input
+      type={type}
+      value={buffer}
+      placeholder={placeholder}
+      onChange={(e) => setBuffer(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') { commit(); (e.target as HTMLInputElement).blur(); } }}
+      className="config-input"
+    />
+  );
+}
+
 function ConfigFieldInput({ field, value, onChange }: { field: ConfigurationField; value: unknown; onChange: (v: unknown) => void }) {
   switch (field.type) {
     case 'text':
       return (
-        <input
+        <BufferedInput
           type="text"
-          value={(value as string) ?? (field.defaultValue as string) ?? ''}
+          initialValue={(value as string) ?? (field.defaultValue as string) ?? ''}
           placeholder={field.placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          className="config-input"
+          onCommit={(raw) => onChange(raw)}
         />
       );
     case 'number':
       return (
-        <input
+        <BufferedInput
           type="number"
-          value={(value as number) ?? (field.defaultValue as number) ?? 0}
+          initialValue={String((value as number) ?? (field.defaultValue as number) ?? 0)}
           placeholder={field.placeholder}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="config-input"
+          onCommit={(raw) => onChange(Number(raw))}
         />
       );
     case 'boolean':

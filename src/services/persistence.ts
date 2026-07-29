@@ -103,6 +103,14 @@ export function parseSchema(json: string): DashboardSchema {
   throw new Error('Invalid schema: missing instances or widgets array');
 }
 
-export function serialiseSchema(dashboards: Dashboard[], instances: WidgetInstance[]): string {
-  return JSON.stringify({ version: SCHEMA_VERSION, dashboards, instances }, null, 2);
+export function serialiseSchema(
+  dashboards: Dashboard[],
+  instances: WidgetInstance[],
+  options?: { includeData?: boolean },
+): string {
+  const includeData = options?.includeData ?? true;
+  const exportedInstances = includeData
+    ? instances
+    : instances.map((w) => ({ ...w, configuration: {} }));
+  return JSON.stringify({ version: SCHEMA_VERSION, dashboards, instances: exportedInstances }, null, 2);
 }

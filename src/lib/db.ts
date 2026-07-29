@@ -31,7 +31,63 @@ function openDb(): Database.Database {
       user_id    TEXT PRIMARY KEY,
       encrypted  TEXT NOT NULL,
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-    )
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id         TEXT PRIMARY KEY,
+      email      TEXT NOT NULL UNIQUE,
+      name       TEXT NOT NULL,
+      picture    TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE TABLE IF NOT EXISTS friendships (
+      id           TEXT PRIMARY KEY,
+      requester_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      addressee_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status       TEXT NOT NULL DEFAULT 'pending',
+      created_at   INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at   INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_pair ON friendships(requester_id, addressee_id);
+    CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id);
+
+    CREATE TABLE IF NOT EXISTS dashboards (
+      id            TEXT PRIMARY KEY,
+      owner_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name          TEXT NOT NULL,
+      icon          TEXT,
+      theme_json    TEXT,
+      settings_json TEXT NOT NULL DEFAULT '{}',
+      is_default    INTEGER NOT NULL DEFAULT 0,
+      updated_at    INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_dashboards_owner ON dashboards(owner_id);
+
+    CREATE TABLE IF NOT EXISTS widget_instances (
+      instance_id        TEXT PRIMARY KEY,
+      dashboard_id       TEXT NOT NULL REFERENCES dashboards(id) ON DELETE CASCADE,
+      widget_type        TEXT NOT NULL,
+      layout_json        TEXT NOT NULL,
+      configuration_json TEXT NOT NULL DEFAULT '{}',
+      visibility         TEXT NOT NULL DEFAULT 'private',
+      mode               TEXT NOT NULL DEFAULT 'readonly',
+      data_source_id     TEXT,
+      updated_at         INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_widget_instances_dashboard ON widget_instances(dashboard_id);
+
+    CREATE TABLE IF NOT EXISTS dashboard_shares (
+      id                  TEXT PRIMARY KEY,
+      dashboard_id        TEXT NOT NULL REFERENCES dashboards(id) ON DELETE CASCADE,
+      shared_with_user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+      share_token         TEXT UNIQUE,
+      permission          TEXT NOT NULL DEFAULT 'view',
+      created_at          INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_shares_dashboard ON dashboard_shares(dashboard_id);
+    CREATE INDEX IF NOT EXISTS idx_shares_user ON dashboard_shares(shared_with_user_id);
   `);
   return instance;
 }

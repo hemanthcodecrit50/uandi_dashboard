@@ -1,12 +1,14 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDashboardStore } from '@/store';
 import { widgetRegistry } from '@/registry';
 import DashboardSettingsPanel from './DashboardSettingsPanel';
+import FriendsPanel from './FriendsPanel';
+import SharePanel from './SharePanel';
 import {
   LayoutDashboard, Plus, Download, Upload, Check, Pencil, ChevronDown,
-  Trash2, Pencil as PencilIcon, Settings,
+  Trash2, Pencil as PencilIcon, Settings, LayoutGrid, Database, Users, Share2,
 } from 'lucide-react';
 
 export default function Toolbar() {
@@ -27,6 +29,9 @@ export default function Toolbar() {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showDashboardMenu, setShowDashboardMenu] = useState(false);
   const [showDashSettings, setShowDashSettings] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -37,14 +42,27 @@ export default function Toolbar() {
 
   const allWidgets = widgetRegistry.getAll();
 
-  const handleExport = () => {
-    const blob = new Blob([exportLayout()], { type: 'application/json' });
+  // Escape backs out of edit mode entirely — consistent with the local
+  // Escape-cancels behavior already used by rename/add-card/edit inputs
+  // elsewhere (any uncommitted text in those is simply discarded).
+  useEffect(() => {
+    if (!isEditMode) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setEditMode(false);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEditMode, setEditMode]);
+
+  const handleExport = (includeData: boolean) => {
+    const blob = new Blob([exportLayout(includeData)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'dashboard-layout.json';
+    a.download = includeData ? 'dashboard-layout-with-data.json' : 'dashboard-layout.json';
     a.click();
     URL.revokeObjectURL(url);
+    setShowExportMenu(false);
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -216,6 +234,27 @@ export default function Toolbar() {
         )}
       </div>
 
+      {/* ── Friends ── */}
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => { setShowFriends(!showFriends); setShowAddMenu(false); setShowDashboardMenu(false); }}
+          title="Friends"
+          className={`toolbar-icon-btn ${showFriends ? 'toolbar-btn--active' : ''}`}
+          style={showFriends ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff' } : undefined}
+        >
+          <Users size={15} />
+        </button>
+        {showFriends && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+              onClick={() => setShowFriends(false)}
+            />
+            <FriendsPanel onClose={() => setShowFriends(false)} />
+          </>
+        )}
+      </div>
+
       <button
         onClick={() => setEditMode(!isEditMode)}
         className={`toolbar-btn ${isEditMode ? 'toolbar-btn--active' : ''}`}
@@ -266,9 +305,57 @@ export default function Toolbar() {
 
       <div style={{ flex: 1 }} />
 
-      <button onClick={handleExport} title="Export layout" className="toolbar-icon-btn">
-        <Download size={15} />
-      </button>
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setShowSharePanel(!showSharePanel)}
+          title="Share this dashboard"
+          className={`toolbar-icon-btn ${showSharePanel ? 'toolbar-btn--active' : ''}`}
+        >
+          <Share2 size={15} />
+        </button>
+        {showSharePanel && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+              onClick={() => setShowSharePanel(false)}
+            />
+            <SharePanel onClose={() => setShowSharePanel(false)} />
+          </>
+        )}
+      </div>
+
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setShowExportMenu(!showExportMenu)}
+          title="Export layout"
+          className={`toolbar-icon-btn ${showExportMenu ? 'toolbar-btn--active' : ''}`}
+        >
+          <Download size={15} />
+        </button>
+
+        {showExportMenu && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+              onClick={() => setShowExportMenu(false)}
+            />
+            <div className="add-menu" style={{ left: 'auto', right: 0 }}>
+              <button onClick={() => handleExport(false)} className="add-menu-item">
+                <span className="add-menu-item__name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <LayoutGrid size={13} /> Layout only
+                </span>
+                <span className="add-menu-item__desc">Widgets and their positions, no content</span>
+              </button>
+              <button onClick={() => handleExport(true)} className="add-menu-item">
+                <span className="add-menu-item__name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Database size={13} /> Layout + data
+                </span>
+                <span className="add-menu-item__desc">Includes widget content (notes, board data, etc.)</span>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
       <button
         onClick={() => fileInputRef.current?.click()}
         title="Import layout"

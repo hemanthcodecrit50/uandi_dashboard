@@ -51,7 +51,7 @@ export default function Renderer({ width }: RendererProps) {
   );
 
   const handleResizeStop = useCallback(
-    (_: Layout[], __: Layout, l: Layout) => resizeWidget(l.i, l.w, l.h),
+    (_: Layout[], __: Layout, l: Layout) => resizeWidget(l.i, l.w, l.h, l.x, l.y),
     [resizeWidget],
   );
 
@@ -66,6 +66,7 @@ export default function Renderer({ width }: RendererProps) {
       onResizeStop={handleResizeStop}
       isDraggable={isEditMode}
       isResizable={isEditMode}
+      resizeHandles={['se', 'sw', 'ne', 'nw']}
       margin={[12, 12]}
       containerPadding={[0, 0]}
       compactType="vertical"

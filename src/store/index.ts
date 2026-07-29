@@ -28,7 +28,7 @@ interface DashboardStore {
   addWidget(widgetType: string): void;
   removeWidget(instanceId: string): void;
   moveWidget(instanceId: string, x: number, y: number): void;
-  resizeWidget(instanceId: string, w: number, h: number): void;
+  resizeWidget(instanceId: string, w: number, h: number, x?: number, y?: number): void;
   resizeWidgetBy(instanceId: string, dw: number, dh: number): void;
   updateWidgetConfig(instanceId: string, patch: Record<string, unknown>): void;
   updateWidgetVisibility(instanceId: string, visibility: WidgetVisibility): void;
@@ -36,7 +36,7 @@ interface DashboardStore {
 
   // Persistence
   loadLayout(): void;
-  exportLayout(): string;
+  exportLayout(includeData?: boolean): string;
   importLayout(json: string): void;
 }
 
@@ -217,9 +217,16 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     persist(get());
   },
 
-  resizeWidget(instanceId, w, h) {
+  resizeWidget(instanceId, w, h, x, y) {
     const next = patchById(get().widgets, instanceId, (widget) => ({
-      ...widget, layout: { ...widget.layout, w, h },
+      ...widget,
+      layout: {
+        ...widget.layout,
+        w,
+        h,
+        x: x ?? widget.layout.x,
+        y: y ?? widget.layout.y,
+      },
     }));
     set({ widgets: next });
     persist(get());
@@ -269,8 +276,8 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     });
   },
 
-  exportLayout() {
-    return serialiseSchema(get().dashboards, get().widgets);
+  exportLayout(includeData = true) {
+    return serialiseSchema(get().dashboards, get().widgets, { includeData });
   },
 
   importLayout(json) {

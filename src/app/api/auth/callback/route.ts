@@ -3,6 +3,7 @@ import { google } from 'googleapis';
 import { createOAuthClient } from '@/lib/googleAuth';
 import { tokenStore } from '@/lib/tokenStore';
 import { createSessionToken, setSessionCookie } from '@/lib/session';
+import { upsertUser } from '@/lib/userStore';
 
 export const runtime = 'nodejs';
 
@@ -55,6 +56,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       email:        profile.email,
       name:         profile.name  ?? profile.email,
       picture:      profile.picture ?? '',
+    });
+
+    // Create/refresh the queryable user profile row — this is the identity
+    // every dashboard, friendship, and share references by ownerId/userId.
+    upsertUser({
+      id:      profile.id,
+      email:   profile.email,
+      name:    profile.name ?? profile.email,
+      picture: profile.picture ?? '',
     });
 
     // Create a signed session JWT and set it as an HTTP-only cookie

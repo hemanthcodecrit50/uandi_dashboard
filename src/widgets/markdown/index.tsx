@@ -1,89 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { WidgetProps, WidgetCapability, ConfigurationSchema } from '@/types';
 import { useDashboardStore } from '@/store';
-import { Pencil, Check, Eye } from 'lucide-react';
-
-function renderMarkdown(text: string): string {
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  // code blocks
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
-    `<pre class="md-code"><code>${code.trim()}</code></pre>`
-  );
-  // inline code
-  html = html.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>');
-  // headers
-  html = html.replace(/^### (.+)$/gm, '<h3 class="md-h3">$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2 class="md-h2">$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1 class="md-h1">$1</h1>');
-  // bold + italic
-  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  // strikethrough
-  html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
-  // blockquote
-  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="md-quote">$1</blockquote>');
-  // unordered list items
-  html = html.replace(/^[\*\-] (.+)$/gm, '<li class="md-li">$1</li>');
-  // ordered list items
-  html = html.replace(/^\d+\. (.+)$/gm, '<li class="md-li md-li-ordered">$1</li>');
-
-  // wrap consecutive unordered <li> in <ul>
-  html = html.replace(/((?:<li class="md-li">[\s\S]*?<\/li>\n?)+)/g, '<ul class="md-ul">$1</ul>');
-  // wrap consecutive ordered <li> in <ol>
-  html = html.replace(/((?:<li class="md-li md-li-ordered">[\s\S]*?<\/li>\n?)+)/g, '<ol class="md-ol">$1</ol>');
-
-  // horizontal rule
-  html = html.replace(/^---+$/gm, '<hr class="md-hr" />');
-  // links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a class="md-link" href="$2" target="_blank" rel="noopener">$1</a>');
-  // images
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img class="md-img" src="$2" alt="$1" />');
-  // line breaks → paragraphs (skip block elements)
-  const lines = html.split('\n');
-  const blocks: string[] = [];
-  let buf = '';
-  const isBlock = (l: string) => /^\s*<(h[1-6]|ul|ol|li|pre|blockquote|hr|div|table|p )/.test(l);
-
-  for (const line of lines) {
-    if (line.trim() === '') {
-      if (buf.trim()) blocks.push(buf.trim());
-      buf = '';
-    } else if (isBlock(line)) {
-      if (buf.trim()) blocks.push(buf.trim());
-      blocks.push(line);
-      buf = '';
-    } else {
-      buf += (buf ? '\n' : '') + line;
-    }
-  }
-  if (buf.trim()) blocks.push(buf.trim());
-
-  html = blocks
-    .map((b) => {
-      if (/^\s*<(h[1-6]|ul|ol|pre|blockquote|hr|div|table)/.test(b)) return b;
-      return `<p class="md-p">${b}</p>`;
-    })
-    .join('\n');
-
-  return html;
-}
+import { Pencil, Check, Eye, Upload } from 'lucide-react';
+import { renderMarkdown } from './render';
 
 export default function MarkdownWidget({ id, config }: WidgetProps) {
   const updateWidgetConfig = useDashboardStore((s) => s.updateWidgetConfig);
   const [editing, setEditing] = useState(false);
   const [buffer, setBuffer] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const content = (config.content as string) || '*Nothing here yet*';
 
   const startEdit = () => { setBuffer(content); setEditing(true); };
   const save = () => { updateWidgetConfig(id, { content: buffer }); setEditing(false); };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (typeof ev.target?.result !== 'string') return;
+      const text = ev.target.result;
+      if (editing) {
+        setBuffer(text);
+      } else {
+        updateWidgetConfig(id, { content: text });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   return (
     <div className="widget-card" style={{ padding: '16px' }}>
@@ -91,12 +40,28 @@ export default function MarkdownWidget({ id, config }: WidgetProps) {
         <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)', fontFamily: "'DM Sans', sans-serif" }}>
           Markdown
         </span>
-        <button
-          onClick={editing ? save : startEdit}
-          className="md-edit-btn"
-        >
-          {editing ? <><Check size={12} /> Done</> : <><Pencil size={12} /> Edit</>}
-        </button>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="md-edit-btn"
+            title="Import a .md file"
+          >
+            <Upload size={12} /> Import
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,.markdown,.txt,text/markdown,text/plain"
+            onChange={handleImport}
+            style={{ display: 'none' }}
+          />
+          <button
+            onClick={editing ? save : startEdit}
+            className="md-edit-btn"
+          >
+            {editing ? <><Check size={12} /> Done</> : <><Pencil size={12} /> Edit</>}
+          </button>
+        </div>
       </div>
 
       {editing ? (
